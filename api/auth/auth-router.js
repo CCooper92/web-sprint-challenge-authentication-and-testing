@@ -1,8 +1,46 @@
 const router = require('express').Router();
+const { checkUsername, checkPayload, checkUser, makeToken } = require('../middleware/auth-middleware.js')
+const bcrypt = require('bcrypt')
+const User = require('./auth-model.js')
 
-router.post('/register', (req, res) => {
-  res.end('implement register, please!');
-  /*
+router.post('/register', checkPayload, checkUsername, (req, res) => {
+  const { password } = req.body;
+  const hash = bcrypt.hashSync(password, 8)
+
+  req.body.password = hash;
+
+  User.add(req.body)
+    .then(registered => {
+      res.status(201).json(registered)
+    })
+    .catch(err => {
+      res.status(500).json({ message: `Server error: ${err}` })
+    })
+  // res.end('implement register, please!');
+ 
+});
+
+router.post('/login', checkPayload, checkUser, (req, res) => {
+  const { username, password } = req.body;
+
+  User.findBy({username: username})
+  .first()
+  .then(user => {
+    if(user && bcrypt.compareSync(password, user.password)){
+      const token = makeToken(user);
+      res.status(200).json ({ message: `welcome ${user.username}`, token: token })
+    }
+  })
+  .catch(err => {
+    res.status(500).json({ message: `Server error: ${err}`})
+  })
+  // res.end('implement login, please!');
+  
+});
+
+module.exports = router;
+
+ /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
     DO NOT EXCEED 2^8 ROUNDS OF HASHING!
@@ -27,10 +65,7 @@ router.post('/register', (req, res) => {
     4- On FAILED registration due to the `username` being taken,
       the response body should include a string exactly as follows: "username taken".
   */
-});
 
-router.post('/login', (req, res) => {
-  res.end('implement login, please!');
   /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
@@ -54,6 +89,3 @@ router.post('/login', (req, res) => {
     4- On FAILED login due to `username` not existing in the db, or `password` being incorrect,
       the response body should include a string exactly as follows: "invalid credentials".
   */
-});
-
-module.exports = router;
